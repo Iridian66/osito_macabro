@@ -9,6 +9,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+ //Control para mostrar/ocultar contraseña
+  bool _obscure = true;
   @override
   Widget build(BuildContext context) {
     //Para obtener el tamaño de la pantalla 
@@ -23,7 +25,53 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: size.width,
                 height: 200,
                 child: RiveAnimation.asset('assets/login_bear.riv'),
-              )
+              ),
+              //Para separar espacio
+              SizedBox(height:  10),
+              //Para email
+              TextField(
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Email',
+                  prefixIcon: const Icon(Icons.email),
+                  border: OutlineInputBorder(
+                    //Para redondear los bordes
+                    borderRadius: BorderRadius.circular(12)
+                  )
+                ),
+              ),
+
+              //Para separar espacio
+              SizedBox(height:  10),
+              
+              
+              //Campo de texto para contraseña
+              //Para mostrar el tipo de teclado 
+              TextField(
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Contraseña',
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    // If ternario
+                    icon: Icon(
+                      _obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
+                   onPressed: (){
+                    //Refrescar el icono 
+                    setState(() {
+                      _obscure = !_obscure;
+                      
+                    });
+                   },
+                   ),
+                  border: OutlineInputBorder(
+                    //Para redondear los bordes
+                    borderRadius: BorderRadius.circular(12)
+                  )
+                ),
+              ),
+            
             ],
           ),
           ),
