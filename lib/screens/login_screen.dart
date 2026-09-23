@@ -20,7 +20,29 @@ SMIBool? _isHandsUp;
 SMIBool? _trigSucess;
 SMITrigger? _trigFail;
 
+//1.2 Crear las variables para FocusNode
+final _emailFocus = FocusNode();
+final _passwordFocus = FocusNode();
 
+
+//2.2 Listeners(oyentes/chismosos)
+@override
+  void initState() {
+   
+    super.initState();
+    _emailFocus.addListener((){
+      //Verificar que no sea nulo
+      if (_isHandsUp != null){
+        //Manos abajo en el email
+        _isHandsUp?.change(false);
+      }
+    });
+    _passwordFocus.addListener((){
+      //Manos arriba en password
+      _isHandsUp?.change(_passwordFocus.hasFocus);
+
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,16 +86,20 @@ SMITrigger? _trigFail;
               ),
               //Para separar espacio
               SizedBox(height:  10),
-              //Para email
+              // Campo Para email
               TextField(
+                focusNode: _emailFocus,
+
                 onTap: () {
   if (_isHandsUp != null) {
-    _isHandsUp!.change(false);
+    //No tapes los ojos al ver el email
+   //  _isHandsUp!.change(false);
   }
-
-  if (_isChecking != null) {
+   // Si esCheking es nulo 
+  if (_isChecking == null) return;
+  //Activar el modo chismoso
     _isChecking!.change(true);
-  }
+  
 },
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
@@ -93,12 +119,13 @@ SMITrigger? _trigFail;
               //Campo de texto para contraseña
               //Para mostrar el tipo de teclado 
               TextField(
-
+               //2.3 Asiganr foco al campo de texto 
+               focusNode: _passwordFocus,
                 onChanged: (value){
                   if(_isChecking != null) {
 
                     //No tapes los ojos al ver email
-                    _isChecking!.change(false);
+                   // _isChecking!.change(false);
                   } 
                   // si isCheking es nulo 
                   if (_isHandsUp == null) return;
@@ -139,5 +166,13 @@ SMITrigger? _trigFail;
           ),
           ),
     );
+  }
+
+  @override
+  void dispose() {
+    //2.4 Liberar el espacio en memoria 
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
   }
 }
