@@ -18,7 +18,7 @@ StateMachineController? _controller;
 //SMI: State Machine Input  / Entrada de maquina de estado 
 SMIBool? _isChecking;
 SMIBool? _isHandsUp;
-SMIBool? _trigSucess;
+SMITrigger? _trigSucess;
 SMITrigger? _trigFail;
 
 //3.2 variable del recorrido de la mirada
@@ -31,6 +31,63 @@ Timer? _typingDebounce;
 //1.2 Crear las variables para FocusNode
 final _emailFocus = FocusNode();
 final _passwordFocus = FocusNode();
+
+//4.1 cONTROLLERS QUE MANIPULAN LO QUE EL USUARIO ESCRIBE
+final _emailCtrl = TextEditingController();
+final _passCtrl = TextEditingController();
+
+//Errores para mostrarlo en la UI 
+String? emailError;
+String? passError;
+
+//4.3 Validadores
+bool isValidEmail(String email){
+  final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+  return re.hasMatch(email);
+}
+
+bool isValidPassword(String pass) {
+  final re = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$',
+  );
+  return re.hasMatch(pass);
+
+}
+ 
+//4.4 Dar accion al boton
+void _onLogin(){
+  
+  // 4.5 De lo que escribio el usuario, quitar espacios en blanco
+  final email = _emailCtrl.text.trim();
+  final pass = _passCtrl.text;
+
+  //4.6 Evaluar los errores 
+  final eError = isValidEmail(email) ? null : "Invalid email";
+  final pError = isValidPassword(pass)? null : "Invalid password";
+
+  //4.7 Avisar que hubo cambios
+  setState(() {
+   emailError = eError;
+   passError = pError;
+  });
+  //4.8 cerrar el teclado y bajar las manos 
+  FocusScope.of(context).unfocus(); //Quita el foco
+  _typingDebounce?.cancel();
+  _isChecking?.change(false);
+  _isHandsUp?.change(false);
+  _numLook?.value = 50.0;
+
+  //4.9 Activar triggers
+  if(eError == null && pError == null){
+    _trigSucess?.fire();
+
+  } else {
+    _trigFail?.fire();
+
+  }
+}
+
+
+
 
 
 //2.2 Listeners(oyentes/chismosos)
@@ -99,6 +156,8 @@ final _passwordFocus = FocusNode();
               SizedBox(height:  10),
               // Campo Para email
               TextField(
+                 //4.10 Enlazar controller
+                controller: _emailCtrl,
                 focusNode: _emailFocus,
 
                 onChanged: (value) {
@@ -131,6 +190,7 @@ final _passwordFocus = FocusNode();
 },
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
+                  errorText: emailError,
                   hintText: 'Email',
                   prefixIcon: const Icon(Icons.email),
                   border: OutlineInputBorder(
@@ -147,6 +207,8 @@ final _passwordFocus = FocusNode();
               //Campo de texto para contraseña
               //Para mostrar el tipo de teclado 
               TextField(
+                //4.10 Enlazar controller
+                controller: _passCtrl,
                //2.3 Asiganr foco al campo de texto 
                focusNode: _passwordFocus,
                 onChanged: (value){
@@ -167,7 +229,9 @@ final _passwordFocus = FocusNode();
 
                 obscureText: _obscure,
                 decoration: InputDecoration(
-                  hintText: 'Contraseña',
+                  //4.11 mostrar el texto de error 
+                  errorText: passError,
+                  hintText: 'Password',
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     // If ternario
@@ -188,6 +252,47 @@ final _passwordFocus = FocusNode();
                   )
                 ),
               ),
+              SizedBox(height: 10),
+              //Texto olvide la contraseña
+              SizedBox(
+                width: size.width,
+                child: const Text( 'Forgot password?',
+                //aLINEAR A la derecha 
+                textAlign: TextAlign.right,
+                style: TextStyle(decoration: TextDecoration.underline)
+                
+                ),
+              ),
+              const SizedBox(height: 10),
+              //4.13 Boton de login
+              MaterialButton(
+                minWidth: size.width,
+                height: 50,
+                color: Colors.pinkAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onPressed: _onLogin,
+                child: Text('Login', style: TextStyle(color: Colors.white)),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: size.width,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Don't have an account?"),
+                    TextButton(onPressed: (){},
+                     child: Text('Sign up', style: TextStyle(
+                      color: Colors.black,
+                      //Subrayado
+                      decoration: TextDecoration.underline,
+                      //Negritas
+                      fontWeight: FontWeight.bold
+                     ),))
+                  ],
+                ),
+              )
             
             ],
           ),
