@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 import 'dart:async';  //3.1 Importar el timer 
 import 'welcome_back.dart';
+import 'package:osito_macabro/screens/signup_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:osito_macabro/services/auth_service.dart';
+
+
 
 class LoginScreen extends StatefulWidget {
   const new({super.key});
@@ -16,7 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
 // 1.1 crear el cerebro de la animacion 
 StateMachineController? _controller;
-//SMI: State Machine Input  / Entrada de maquina de estado 
+//SMI: State Machine Input  / 
+
 SMIBool? _isChecking;
 SMIBool? _isHandsUp;
 SMITrigger? _trigSucess;
@@ -51,41 +57,97 @@ bool isValidPassword(String pass) {
   final re = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$',
   );
   return re.hasMatch(pass);
+  
 
 }
  
 //4.4 Dar accion al boton
-void _onLogin(){
-  
-  // 4.5 De lo que escribio el usuario, quitar espacios en blanco
+
+Future<void> _onLogin() async {
+  // Obtener los datos escritos por el usuario.
   final email = _emailCtrl.text.trim();
   final pass = _passCtrl.text;
 
-  //4.6 Evaluar los errores 
-  final eError = isValidEmail(email) ? null : "Invalid email";
-  final pError = isValidPassword(pass)? null : "Invalid password";
+  // Validar el formato de los campos.
+  final eError = isValidEmail(email)
+      ? null
+      : "Invalid email";
 
-  //4.7 Avisar que hubo cambios
+  final pError = isValidPassword(pass)
+      ? null
+      : "Password must have at least 8 characters";
+
   setState(() {
-   emailError = eError;
-   passError = pError;
+    emailError = eError;
+    passError = pError;
   });
-  //4.8 cerrar el teclado y bajar las manos 
-  FocusScope.of(context).unfocus(); //Quita el foco
+
+  // Si hay errores de formato, activar la animación de fallo.
+  if (eError != null || pError != null) {
+    _trigFail?.fire();
+    return;
+  }
+
+  // Cerrar teclado y detener las animaciones de escritura.
+  FocusScope.of(context).unfocus();
   _typingDebounce?.cancel();
   _isChecking?.change(false);
   _isHandsUp?.change(false);
   _numLook?.value = 50.0;
 
-  //4.9 Activar triggers
-  if(eError == null && pError == null){
+  try {
+    // Comprobar las credenciales con Firebase Authentication.
+    await AuthService().login(
+      email: email,
+      password: pass,
+    );
+
+    if (!mounted) return;
+
+    // Firebase confirmó el acceso: animación de éxito.
     _trigSucess?.fire();
 
-  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('¡Inicio de sesión correcto! 💗'),
+      ),
+    );
+
+  } on FirebaseAuthException catch (e) {
+    if (!mounted) return;
+
+    // Firebase rechazó las credenciales.
     _trigFail?.fire();
 
+    String message = 'No se pudo iniciar sesión.';
+
+    if (e.code == 'invalid-credential' ||
+        e.code == 'wrong-password' ||
+        e.code == 'user-not-found') {
+      message = 'Correo o contraseña incorrectos.';
+    } else if (e.code == 'invalid-email') {
+      message = 'El correo electrónico no es válido.';
+    } else if (e.code == 'too-many-requests') {
+      message = 'Demasiados intentos. Intenta más tarde.';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
+  } catch (e) {
+    if (!mounted) return;
+
+    _trigFail?.fire();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Ocurrió un error al iniciar sesión.'),
+      ),
+    );
   }
 }
+
 
 
 
@@ -290,7 +352,7 @@ void _onLogin(){
     Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const WelcomeBackScreen(),
+      builder: (context) => const SignupScreen(),
     ),
   );
   },

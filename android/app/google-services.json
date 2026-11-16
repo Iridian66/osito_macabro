@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "35790461963",
+    "project_id": "rive-animated-login-1e243",
+    "storage_bucket": "rive-animated-login-1e243.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:35790461963:android:0cbec5e82f032cab627b0e",
+        "android_client_info": {
+          "package_name": "com.example.osito_macabro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeoQ4wjfvCgKrlYNwLS829uUYdU5PFiCo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
