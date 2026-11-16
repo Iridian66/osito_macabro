@@ -5,19 +5,23 @@ import 'welcome_back.dart';
 import 'package:osito_macabro/screens/signup_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:osito_macabro/services/auth_service.dart';
+import 'package:osito_macabro/screens/forgot_password.dart';
 
 
 
 class LoginScreen extends StatefulWidget {
-  const new({super.key});
+  const LoginScreen({super.key}); // <-- Corregido aquí
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+
 class _LoginScreenState extends State<LoginScreen> {
  //Control para mostrar/ocultar contraseña
   bool _obscure = true;
+  // Evitar múltiples intentos mientras Firebase responde.
+bool _isLoggingIn = false;
 
 // 1.1 crear el cerebro de la animacion 
 StateMachineController? _controller;
@@ -48,6 +52,7 @@ String? emailError;
 String? passError;
 
 //4.3 Validadores
+
 bool isValidEmail(String email){
   final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
   return re.hasMatch(email);
@@ -63,40 +68,57 @@ bool isValidPassword(String pass) {
  
 //4.4 Dar accion al boton
 
+
 Future<void> _onLogin() async {
-  // Obtener los datos escritos por el usuario.
+  if (_isLoggingIn) return;
+
   final email = _emailCtrl.text.trim();
   final pass = _passCtrl.text;
 
-  // Validar el formato de los campos.
-  final eError = isValidEmail(email)
-      ? null
-      : "Invalid email";
+  // Guardamos si el osito tenía las manos arriba antes de quitar el foco
+  final hadHandsUp = _isHandsUp?.value ?? false;
 
-  final pError = isValidPassword(pass)
-      ? null
-      : "Password must have at least 8 characters";
-
-  setState(() {
-    emailError = eError;
-    passError = pError;
-  });
-
-  // Si hay errores de formato, activar la animación de fallo.
-  if (eError != null || pError != null) {
-    _trigFail?.fire();
-    return;
-  }
-
-  // Cerrar teclado y detener las animaciones de escritura.
+  // Bajamos las manos y quitamos el teclado de inmediato
   FocusScope.of(context).unfocus();
   _typingDebounce?.cancel();
   _isChecking?.change(false);
   _isHandsUp?.change(false);
   _numLook?.value = 50.0;
 
+  // 1. Evaluar errores de formato
+  final eError = isValidEmail(email) ? null : 'Correo electrónico no válido';
+  final pError = isValidPassword(pass)
+      ? null
+      : 'La contraseña debe tener mínimo 8 caracteres, mayúscula, minúscula, número y símbolo';
+
+  if (eError != null || pError != null) {
+    setState(() {
+      emailError = eError;
+      passError = pError;
+    });
+
+    // Si tenía las manos arriba, esperamos 700ms a que llegue al estado Idle
+    if (hadHandsUp) {
+      await Future.delayed(const Duration(milliseconds: 700));
+    }
+    if (!mounted) return;
+
+    _trigFail?.fire();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Revisa tu correo y contraseña.')),
+    );
+    return;
+  }
+
+  // 2. Formato válido: consultar Firebase
+  setState(() {
+    emailError = null;
+    passError = null;
+    _isLoggingIn = true;
+  });
+
   try {
-    // Comprobar las credenciales con Firebase Authentication.
     await AuthService().login(
       email: email,
       password: pass,
@@ -104,23 +126,35 @@ Future<void> _onLogin() async {
 
     if (!mounted) return;
 
-    // Firebase confirmó el acceso: animación de éxito.
+    // Si Firebase respondió muy rápido y aún estaba bajando las manos, esperamos
+    if (hadHandsUp) {
+      await Future.delayed(const Duration(milliseconds: 600));
+    }
+    if (!mounted) return;
+
+    // Disparar animación de alegría
     _trigSucess?.fire();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('¡Inicio de sesión correcto! 💗'),
+        duration: Duration(seconds: 2),
       ),
     );
 
   } on FirebaseAuthException catch (e) {
     if (!mounted) return;
 
-    // Firebase rechazó las credenciales.
+    // Si Firebase rechazó rápido y aún estaba bajando las manos, esperamos
+    if (hadHandsUp) {
+      await Future.delayed(const Duration(milliseconds: 600));
+    }
+    if (!mounted) return;
+
+    // Disparar animación de tristeza
     _trigFail?.fire();
 
     String message = 'No se pudo iniciar sesión.';
-
     if (e.code == 'invalid-credential' ||
         e.code == 'wrong-password' ||
         e.code == 'user-not-found') {
@@ -134,19 +168,32 @@ Future<void> _onLogin() async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
-
   } catch (e) {
+    if (!mounted) return;
+
+    if (hadHandsUp) {
+      await Future.delayed(const Duration(milliseconds: 600));
+    }
     if (!mounted) return;
 
     _trigFail?.fire();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ocurrió un error al iniciar sesión.'),
-      ),
+      const SnackBar(content: Text('Ocurrió un error al iniciar sesión.')),
     );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoggingIn = false;
+      });
+    }
   }
 }
+
+
+
+
+
 
 
 
@@ -199,10 +246,16 @@ Future<void> _onLogin() async {
         
                     // 1.3 Verificar que inicio bien 
                     if(_controller == null) return;
-                    artboard.addController(_controller!);
+                    
         
                     //Agrega controlador al escenario /tablero
-                    artboard.addController(_controller!);
+                    
+
+                    if (_controller == null) return;
+
+artboard.addController(_controller!);
+
+
         
                     //Vinculamos variables 
                     _isChecking = _controller!.findSMI('isChecking');
@@ -319,14 +372,26 @@ Future<void> _onLogin() async {
                 SizedBox(height: 10),
                 //Texto olvide la contraseña
                 SizedBox(
-                  width: size.width,
-                  child: const Text( 'Forgot password?',
-                  //aLINEAR A la derecha 
-                  textAlign: TextAlign.right,
-                  style: TextStyle(decoration: TextDecoration.underline)
-                  
-                  ),
-                ),
+  width: size.width,
+  child: TextButton(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ForgotPasswordScreen(),
+        ),
+      );
+    },
+    child: const Text(
+      'Forgot password?',
+      textAlign: TextAlign.right,
+      style: TextStyle(
+        color: Color(0xFFAD4D79),
+        decoration: TextDecoration.underline,
+      ),
+    ),
+  ),
+),
                 const SizedBox(height: 10),
                 //4.13 Boton de login
                 MaterialButton(
@@ -336,8 +401,13 @@ Future<void> _onLogin() async {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  onPressed: _onLogin,
-                  child: Text('Login', style: TextStyle(color: Colors.white)),
+                  onPressed: _isLoggingIn ? null : _onLogin,
+                  child: _isLoggingIn
+    ? const CircularProgressIndicator(color: Colors.white)
+    : const Text(
+        'Login',
+        style: TextStyle(color: Colors.white),
+      ),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -375,12 +445,18 @@ Future<void> _onLogin() async {
     );
   }
 
+
   @override
-  void dispose() {
-    //2.4 Liberar el espacio en memoria 
-    _emailFocus.dispose();
-    _passwordFocus.dispose();
-    _typingDebounce?.cancel(); //3.9 Eliminar el timer 
-    super.dispose();
-  }
+void dispose() {
+  // Liberar los recursos utilizados por los campos.
+  _emailFocus.dispose();
+  _passwordFocus.dispose();
+  _emailCtrl.dispose();
+  _passCtrl.dispose();
+
+  // Cancelar el temporizador.
+  _typingDebounce?.cancel();
+
+  super.dispose();
+}
 }

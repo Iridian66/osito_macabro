@@ -7,9 +7,8 @@ import 'package:firebase_core/firebase_core.dart';
 // 2. Importar las opciones generadas por FlutterFire.
 import 'firebase_options.dart';
 
-// 3. Importar nuestra pantalla original del osito.
-import 'package:osito_macabro/screens/login_screen.dart';
-
+// 3. Importar nuestro controlador de sesión.
+import 'package:osito_macabro/auth/auth_gate.dart';
 
 // FUNCIÓN PRINCIPAL DE LA APLICACIÓN
 Future<void> main() async {
@@ -19,7 +18,7 @@ Future<void> main() async {
 
   try {
 
-    // 5. Inicializar Firebase utilizando la configuración de FlutterFire.
+    // 5. Inicializar Firebase utilizando FlutterFire.
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -60,8 +59,8 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      // Conservamos el Login original del profesor.
-      home: const LoginScreen(),
+      // AuthGate decide entre Login y Home según la sesión.
+      home: const AuthGate(),
     );
   }
 }
